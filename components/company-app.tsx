@@ -29,6 +29,7 @@ import {
   Filter,
   LayoutGrid,
   Menu,
+  MessageCircle,
   Plus,
   Search,
   Sparkles,
@@ -63,6 +64,7 @@ const nav = [
   { href: '/plans', label: 'Плани', icon: CalendarDays, countBadge: '3' },
   { href: '/finance', label: 'Фінанси', icon: CircleDollarSign },
   { href: '/payments', label: 'Виплати', icon: Wallet, countBadge: '3' },
+  { href: '/chats', label: 'Чати', icon: MessageCircle, countBadge: '1' },
 ]
 
 // Initial seed data
@@ -1135,15 +1137,98 @@ function PaymentsPage() {
   )
 }
 
+// -------------------------------------------------------------
+// 5. CHATS PAGE (Responsive Mobile + PC)
+// -------------------------------------------------------------
+function ChatsPage() {
+  const [messages, setMessages] = useState([
+    { id: 1, text: 'Привіт! Коли буде готовий макет?', sender: 'Олена Коваль', isMe: false, time: '10:05' },
+    { id: 2, text: 'Вже закінчую, скину за годину.', sender: 'Я', isMe: true, time: '10:12' },
+    { id: 3, text: 'Супер, чекаю.', sender: 'Олена Коваль', isMe: false, time: '10:15' },
+  ])
+  const [newMessage, setNewMessage] = useState('')
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newMessage.trim()) return
+    
+    setMessages([
+      ...messages,
+      {
+        id: Date.now(),
+        text: newMessage,
+        sender: 'Я',
+        isMe: true,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }
+    ])
+    setNewMessage('')
+  }
+
+  return (
+    <Shell title="Чати">
+      <div className="flex flex-col h-[calc(100vh-200px)] max-h-[800px] border border-border rounded-xl bg-card overflow-hidden shadow-sm">
+        <div className="border-b border-border bg-muted/30 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm shadow-sm">
+              ОК
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm">Олена Коваль</h3>
+              <p className="text-xs text-emerald-500">В мережі</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex flex-col ${msg.isMe ? 'items-end' : 'items-start'}`}>
+              {!msg.isMe && <span className="text-[10px] text-muted-foreground ml-1 mb-1">{msg.sender}</span>}
+              <div className={`px-4 py-2 rounded-2xl max-w-[80%] ${
+                msg.isMe 
+                  ? 'bg-primary text-primary-foreground rounded-tr-sm' 
+                  : 'bg-muted text-foreground border border-border rounded-tl-sm'
+              }`}>
+                <p className="text-sm">{msg.text}</p>
+              </div>
+              <span className="text-[10px] text-muted-foreground mt-1 mx-1">{msg.time}</span>
+            </div>
+          ))}
+        </div>
+
+        <form onSubmit={handleSend} className="p-3 border-t border-border bg-background flex gap-2">
+          <Input 
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Напишіть повідомлення..."
+            className="flex-1 rounded-full h-10 px-4"
+          />
+          <Button type="submit" size="icon" className="h-10 w-10 rounded-full shrink-0">
+            <ArrowUpRight className="size-5" />
+          </Button>
+        </form>
+      </div>
+    </Shell>
+  )
+}
+
 // Main Page Switcher
 export default function CompanyApp() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [authChecking, setAuthChecking] = useState(true)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const pathname = usePathname()
 
   useEffect(() => {
+    // Check if user is already logged in
+    const savedLogin = localStorage.getItem('isLoggedIn')
+    if (savedLogin === 'true') {
+      setIsLoggedIn(true)
+    }
+    setAuthChecking(false)
+
     if (Capacitor.isNativePlatform()) {
       PushNotifications.requestPermissions().then(result => {
         if (result.receive === 'granted') {
@@ -1154,7 +1239,7 @@ export default function CompanyApp() {
       PushNotifications.addListener('registration', (token) => {
         console.log('Push registration success, token: ' + token.value);
         // We alert here so the user can see their token and verify it worked
-        alert('Push Token:\n' + token.value); 
+        // alert('Push Token:\n' + token.value); 
       });
 
       PushNotifications.addListener('pushNotificationReceived', (notification) => {
@@ -1162,6 +1247,10 @@ export default function CompanyApp() {
       });
     }
   }, []);
+
+  if (authChecking) {
+    return <div className="flex min-h-screen items-center justify-center bg-background p-4"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+  }
 
   if (!isLoggedIn) {
     return (
@@ -1179,6 +1268,7 @@ export default function CompanyApp() {
               e.preventDefault()
               if (username === 'admin' && password === 'admin') {
                 setIsLoggedIn(true)
+                localStorage.setItem('isLoggedIn', 'true')
                 setError('')
               } else {
                 setError('Невірний логін або пароль')
@@ -1217,5 +1307,6 @@ export default function CompanyApp() {
   if (pathname === '/plans') return <PlansPage />
   if (pathname === '/finance') return <FinancePage />
   if (pathname === '/payments') return <PaymentsPage />
+  if (pathname === '/chats') return <ChatsPage />
   return <TasksPage />
 }
