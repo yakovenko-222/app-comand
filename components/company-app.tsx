@@ -1,8 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Capacitor } from '@capacitor/core'
+import { PushNotifications } from '@capacitor/push-notifications'
 import {
   Bar,
   BarChart,
@@ -1140,6 +1142,26 @@ export default function CompanyApp() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const pathname = usePathname()
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      PushNotifications.requestPermissions().then(result => {
+        if (result.receive === 'granted') {
+          PushNotifications.register();
+        }
+      });
+
+      PushNotifications.addListener('registration', (token) => {
+        console.log('Push registration success, token: ' + token.value);
+        // We alert here so the user can see their token and verify it worked
+        alert('Push Token:\n' + token.value); 
+      });
+
+      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        alert('Пуш-сповіщення: ' + notification.title + '\n' + notification.body);
+      });
+    }
+  }, []);
 
   if (!isLoggedIn) {
     return (
