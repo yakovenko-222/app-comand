@@ -62,10 +62,13 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 const nav = [
   { href: '/tasks', label: 'Задачі', icon: LayoutGrid, countBadge: '5' },
   { href: '/plans', label: 'Плани', icon: CalendarDays, countBadge: '3' },
+  { href: '/orders', label: 'Замовлення', icon: Package, countBadge: '12' },
   { href: '/finance', label: 'Фінанси', icon: CircleDollarSign },
   { href: '/payments', label: 'Виплати', icon: Wallet, countBadge: '3' },
   { href: '/chats', label: 'Чати', icon: MessageCircle, countBadge: '1' },
 ]
+
+import OrdersPage from './orders-page'
 
 // Initial seed data
 const initialTasks = [
@@ -246,7 +249,7 @@ function BottomNav() {
 }
 
 // Unified Shell Component (Mobile + PC)
-function Shell({
+export function Shell({
   children,
   title,
   headerAction,
@@ -1308,5 +1311,6 @@ export default function CompanyApp() {
   if (pathname === '/finance') return <FinancePage />
   if (pathname === '/payments') return <PaymentsPage />
   if (pathname === '/chats') return <ChatsPage />
+  if (pathname === '/orders') return <OrdersPage />
   return <TasksPage />
 }
