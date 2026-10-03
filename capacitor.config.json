@@ -1,0 +1,14 @@
+{
+  "appId": "com.workspace.app",
+  "appName": "Робочий простір",
+  "webDir": "out",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
+}
