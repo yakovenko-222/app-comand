@@ -1,52 +1,35 @@
 @echo off
 chcp 65001 >nul
-title Публікація на GitHub для онлайн збірки APK
+title Відправка коду на GitHub
 echo ===================================================
-echo   Публікація на GitHub для автоматичної збірки APK
+echo   Надсилання коду до репозиторію yakovenko213/app-comand
 echo ===================================================
 echo.
-echo 1. Створіть новий порожній репозиторій на https://github.com/new
-echo    (не додавайте README, .gitignore чи ліцензію, просто назвіть його).
-echo.
-echo 2. Скопіюйте посилання на ваш репозиторій.
-echo    Приклад: https://github.com/ваш_логін/назва_репозиторію.git
-echo.
-set /p REPO_URL="Введіть або вставте URL вашого репозиторію: "
+git remote set-url origin https://github.com/yakovenko213/app-comand.git
 
-if "%REPO_URL%"=="" (
-    echo [Помилка] URL не введено.
-    pause
-    exit /b 1
-)
-
+echo Відправляємо на GitHub...
+echo Якщо з'явиться вікно авторизації - оберіть "Sign in with your browser"
 echo.
-echo Налаштування віддаленого репозиторію...
-git remote remove origin 2>nul
-git remote add origin %REPO_URL%
-git branch -M main
-
-echo.
-echo Надсилання коду на GitHub...
 git push -u origin main
 
 if errorlevel 1 (
     echo.
-    echo [Помилка] Не вдалося відправити код. Перевірте посилання або авторизацію в Git.
-    pause
-    exit /b 1
+    echo ===================================================
+    echo Якщо виникла помилка 403 (Permission denied to yakovenko2):
+    echo.
+    echo Варіант А (найшвидший):
+    echo Додайте акаунт yakovenko2 у співавтори репозиторію:
+    echo 1. Відкрийте https://github.com/yakovenko213/app-comand/settings/access
+    echo 2. Натисніть "Add people" і додайте користувача: yakovenko2
+    echo 3. Спробуйте запустити цей скрипт ще раз!
+    echo ===================================================
+) else (
+    echo.
+    echo ===================================================
+    echo [Успіх] Код завантажено!
+    echo Онлайн-збірка APK вже почалася на GitHub!
+    echo Перевірте вкладку Actions:
+    echo https://github.com/yakovenko213/app-comand/actions
+    echo ===================================================
 )
-
-echo.
-echo ===================================================
-echo [Успіх] Код успішно завантажено на GitHub!
-echo.
-echo Онлайн збірка APK вже запустилася автоматично!
-echo.
-echo Що робити далі:
-echo 1. Відкрийте ваш репозиторій на GitHub.
-echo 2. Перейдіть у вкладку "Actions" (зверху).
-echo 3. Оберіть запуск "Build Android APK" - за 2-3 хвилини
-echo    у розділі "Artifacts" або "Releases" з'явиться готовий
-echo    файл app-debug.apk для встановлення на телефон!
-echo ===================================================
 pause
