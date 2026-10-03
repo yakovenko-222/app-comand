@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Shell } from '@/components/company-app' // We will export Shell from company-app
 import {
   Search, Filter, SlidersHorizontal, ChevronDown, Package, Sparkles, PackageCheck, 
@@ -16,49 +16,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-
-// Mock Data
-const mockOrders = [
-  {
-    id: "1", orderNumber: "UA-2024-001234", clientName: "Шевченко Олена Петрівна",
-    deliveryService: "Нова Пошта", trackingNumber: "20450123456789", amount: 2450,
-    date: "10.03.2026", status: "new",
-    details: {
-      source: "instagram", createdAt: "10.03.2026 14:32", manager: "Анна Коваль",
-      customer: { name: "Шевченко Олена Петрівна", phone: "+380 67 123 45 67", email: "olena@gmail.com" },
-      delivery: { service: "Нова Пошта", address: "м. Київ, відділення №25", ttn: "20450123456789" },
-      items: [
-        { id: "1", sku: "SKU-001", name: "Крем зволожуючий", quantity: 2, price: 850, discount: 0 },
-        { id: "2", sku: "SKU-015", name: "Сироватка", quantity: 1, price: 750, discount: 10 },
-      ],
-      notes: "Зателефонувати перед відправкою"
-    },
-  },
-  {
-    id: "2", orderNumber: "UA-2024-001235", clientName: "Коваленко Іван Степанович",
-    deliveryService: "Укрпошта", trackingNumber: "RA123456789UA", amount: 1890,
-    date: "10.03.2026", status: "packed",
-    details: {
-      source: "telegram", createdAt: "10.03.2026 11:15", manager: "Олег Бондаренко",
-      customer: { name: "Коваленко Іван Степанович", phone: "+380 50 987 65 43" },
-      delivery: { service: "Укрпошта", address: "м. Львів, відділення №12" },
-      items: [
-        { id: "3", sku: "SKU-022", name: "Шампунь відновлюючий", quantity: 3, price: 420, discount: 5 },
-      ]
-    },
-  },
-  {
-    id: "3", orderNumber: "UA-2024-001236", clientName: "Мельник Оксана Василівна",
-    deliveryService: "Нова Пошта", trackingNumber: "20450123456790", amount: 3200,
-    date: "09.03.2026", status: "shipped",
-    details: {
-      source: "viber", createdAt: "09.03.2026 16:45", manager: "Анна Коваль",
-      customer: { name: "Мельник Оксана Василівна", phone: "+380 63 456 78 90" },
-      delivery: { service: "Нова Пошта", address: "м. Одеса, відділення №8" },
-      items: [{ id: "5", sku: "SKU-045", name: "Набір для догляду", quantity: 1, price: 2500, discount: 0 }]
-    },
-  }
-];
+import { collectionGroup, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 
 const statusConfig = {
   new: { label: "Новий", bg: "bg-blue-100", text: "text-blue-700", icon: Sparkles },
@@ -71,19 +30,40 @@ const statusConfig = {
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState(mockOrders);
+  const [orders, setOrders] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Listen to all orders across all users
+    const q = query(collectionGroup(db, 'orders'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const loadedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setOrders(loadedOrders);
+      setLoading(false);
+    }, (error) => {
+      console.error("Firebase fetch error:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const filteredOrders = useMemo(() => {
     if (!search) return orders;
     const q = search.toLowerCase();
-    return orders.filter(o => 
-      o.orderNumber.toLowerCase().includes(q) || 
-      o.clientName.toLowerCase().includes(q) ||
-      o.details.customer.phone.includes(q)
-    );
+    return orders.filter(o => {
+      const orderNumber = String(o.orderNumber || '').toLowerCase();
+      const clientName = String(o.clientName || '').toLowerCase();
+      const phone = String(o.details?.customer?.phone || '').toLowerCase();
+      return orderNumber.includes(q) || clientName.includes(q) || phone.includes(q);
+    });
   }, [orders, search]);
+
+  if (loading) {
+    return <div className="flex-1 flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin text-primary h-8 w-8" /></div>
+  }
 
   return (
     <div className="flex-1 space-y-4">
