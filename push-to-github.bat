@@ -7,6 +7,11 @@ echo ===================================================
 echo.
 git remote set-url origin https://github.com/yakovenko213/app-comand.git
 
+echo Зберігаємо зміни у Git...
+git add .
+git commit -m "Оновлення додатку: розділ замовлень, виправлення навігації та оновлення v1.1" 2>nul
+
+echo.
 echo Відправляємо на GitHub...
 echo Якщо з'явиться вікно авторизації - оберіть "Sign in with your browser"
 echo.
@@ -15,21 +20,23 @@ git push -u origin main
 if errorlevel 1 (
     echo.
     echo ===================================================
-    echo Якщо виникла помилка 403 (Permission denied to yakovenko2):
+    echo Якщо виникла помилка авторизації (Permission denied):
     echo.
-    echo Варіант А (найшвидший):
-    echo Додайте акаунт yakovenko2 у співавтори репозиторію:
     echo 1. Відкрийте https://github.com/yakovenko213/app-comand/settings/access
-    echo 2. Натисніть "Add people" і додайте користувача: yakovenko2
+    echo 2. Додайте ваш акаунт у співавтори або виконайте вхід
     echo 3. Спробуйте запустити цей скрипт ще раз!
     echo ===================================================
 ) else (
     echo.
     echo ===================================================
-    echo [Успіх] Код завантажено!
-    echo Онлайн-збірка APK вже почалася на GitHub!
-    echo Перевірте вкладку Actions:
-    echo https://github.com/yakovenko213/app-comand/actions
+    echo [Успіх] Код завантажено на GitHub!
+    echo Онлайн-збірка APK вже почалася на GitHub Actions!
+    echo.
+    echo 1. Відстежувати процес збірки:
+    echo    https://github.com/yakovenko213/app-comand/actions
+    echo.
+    echo 2. Завантажити готовий оновлений APK на телефон:
+    echo    https://github.com/yakovenko213/app-comand/releases
     echo ===================================================
 )
 pause

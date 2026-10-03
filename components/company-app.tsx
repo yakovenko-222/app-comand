@@ -30,6 +30,7 @@ import {
   LayoutGrid,
   Menu,
   MessageCircle,
+  Package,
   Plus,
   Search,
   Sparkles,
@@ -221,14 +222,14 @@ function BottomNav() {
   const pathname = usePathname()
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur md:hidden">
-      <div className="mx-auto grid max-w-xl grid-cols-4">
+      <div className="mx-auto grid max-w-xl grid-cols-6">
         {nav.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || (href === '/tasks' && pathname === '/')
           return (
             <Link
               key={href}
               href={href}
-              className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
+              className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors ${
                 active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -237,9 +238,9 @@ function BottomNav() {
                   active ? 'bg-primary text-primary-foreground shadow-sm' : ''
                 }`}
               >
-                <Icon className="size-4.5" />
+                <Icon className="size-4" />
               </span>
-              <span>{label}</span>
+              <span className="truncate max-w-[52px] text-center">{label}</span>
             </Link>
           )
         })}
