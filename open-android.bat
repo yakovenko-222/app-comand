@@ -23,10 +23,8 @@ if exist "D:\saves1\bin\studio64.exe" (
 echo.
 echo ===================================================
 echo  Як отримати APK файл в Android Studio:
-echo  1. Зачекайте завершення початкової синхронізації (Gradle Sync).
-echo  2. У верхньому меню оберіть:
-echo     Build -> Build Bundle(s) / APK(s) -> Build APK(s)
-echo  3. Після завершення натисніть кнопку "locate"
-echo     і отримаєте готовий файл app-debug.apk для встановлення на телефон!
+echo  1. Зачекайте завершення Gradle Sync.
+echo  2. У верхньому меню оберіть: Build - Build APK
+echo  3. Після завершення натисніть locate для копіювання app-debug.apk
 echo ===================================================
 pause

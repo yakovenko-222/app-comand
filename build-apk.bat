@@ -24,11 +24,8 @@ call gradlew.bat assembleDebug
 if errorlevel 1 (
     echo.
     echo ===================================================
-    echo [Увага] Збірка через консоль потребує налаштованого Android SDK.
-    echo Рекомендований спосіб:
-    echo 1. Запустіть "open-android.bat"
-    echo 2. Android Studio автоматично довантажить компоненти SDK (1 клік)
-    echo 3. Натисніть Build -> Build Bundle(s) / APK(s) -> Build APK(s)
+    echo Порада: для автоматичної безкоштовної онлайн-збірки
+    echo запустіть скрипт push-to-github.bat!
     echo ===================================================
     pause
     exit /b 1
