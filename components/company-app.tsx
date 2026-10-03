@@ -1135,7 +1135,62 @@ function PaymentsPage() {
 
 // Main Page Switcher
 export default function CompanyApp() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
   const pathname = usePathname()
+
+  if (!isLoggedIn) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-sm rounded-2xl shadow-lg border-border">
+          <CardHeader className="text-center space-y-2 pb-6">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm mb-2">
+              <Building2 className="size-6" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Вхід у систему</CardTitle>
+            <CardDescription>Введіть логін та пароль для доступу</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              if (username === 'admin' && password === 'admin') {
+                setIsLoggedIn(true)
+                setError('')
+              } else {
+                setError('Невірний логін або пароль')
+              }
+            }} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Логін</Label>
+                <Input 
+                  id="username" 
+                  value={username} 
+                  onChange={(e) => setUsername(e.target.value)} 
+                  placeholder="admin" 
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Пароль</Label>
+                <Input 
+                  id="password" 
+                  type="password"
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  required
+                />
+              </div>
+              {error && <p className="text-sm font-medium text-red-500 dark:text-red-400 text-center">{error}</p>}
+              <Button type="submit" className="w-full h-11 text-base font-semibold mt-2">Увійти</Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (pathname === '/plans') return <PlansPage />
   if (pathname === '/finance') return <FinancePage />
