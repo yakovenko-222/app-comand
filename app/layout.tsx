@@ -1,11 +1,18 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { PWARegister } from '@/components/pwa-register'
 
 export const metadata: Metadata = {
   title: 'Робочий простір',
   description: 'Внутрішній робочий простір команди',
   generator: 'v0.app',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Робочий простір',
+  },
   icons: {
     icon: [
       {
@@ -26,8 +33,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'light',
-  themeColor: '#000000',
+  themeColor: '#09090b',
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
@@ -39,6 +46,7 @@ export default function RootLayout({
     <html lang="uk">
       <body className="antialiased">
         {children}
+        <PWARegister />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
