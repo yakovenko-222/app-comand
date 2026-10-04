@@ -64,6 +64,21 @@ function resolveFilePath(reqPath) {
   return null;
 }
 
+const os = require('os');
+
+function getLocalIpAddresses() {
+  const interfaces = os.networkInterfaces();
+  const ips = [];
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        ips.push(iface.address);
+      }
+    }
+  }
+  return ips;
+}
+
 function createServer(port) {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
@@ -109,7 +124,7 @@ function createServer(port) {
       stream.pipe(res);
     });
 
-    server.listen(port, 'localhost', () => {
+    server.listen(port, '0.0.0.0', () => {
       resolve({ server, port });
     });
 
@@ -130,10 +145,19 @@ async function start() {
   }
 
   const { port } = await createServer(DEFAULT_PORT);
-  console.log('----------------------------------------------------');
-  console.log(`[Робочий простір] Додаток готовий до роботи!`);
-  console.log(`Локальна адреса: http://localhost:${port}`);
-  console.log('----------------------------------------------------');
+  const localIps = getLocalIpAddresses();
+
+  console.log('====================================================');
+  console.log(`[Робочий простір] Сервер успішно запущено!`);
+  console.log(`💻 Локально на ПК:     http://localhost:${port}`);
+  if (localIps.length > 0) {
+    localIps.forEach((ip) => {
+      console.log(`📱 На телефоні (Wi-Fi): http://${ip}:${port}`);
+    });
+  } else {
+    console.log(`📱 На телефоні (Wi-Fi): http://<ВАШ_IP_КОМП'ЮТЕРА>:${port}`);
+  }
+  console.log('====================================================');
   return port;
 }
 
