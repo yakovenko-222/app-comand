@@ -112,6 +112,9 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("status"); // 'status' | 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dbStatus, setDbStatus] = useState<'connecting' | 'connected' | 'permission_error' | 'empty'>('connecting');
@@ -201,8 +204,20 @@ export default function OrdersPage() {
     setTimeout(() => setCopySuccess(null), 2000);
   };
 
-  const filteredOrders = useMemo(() => {
-    return orders.filter(o => {
+  // Status priority for status-based sorting
+  const statusPriority: Record<string, number> = {
+    new: 1,
+    packed: 2,
+    shipped: 3,
+    delivering: 4,
+    arrived: 5,
+    completed: 6,
+    cancelled: 7,
+  };
+
+  const filteredAndSortedOrders = useMemo(() => {
+    // 1. Filter
+    const filtered = orders.filter(o => {
       const q = search.toLowerCase();
       const orderNumber = String(o.orderNumber || '').toLowerCase();
       const clientName = String(o.clientName || '').toLowerCase();
@@ -214,7 +229,39 @@ export default function OrdersPage() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [orders, search, statusFilter]);
+
+    // 2. Sort
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'status') {
+        const priorityA = statusPriority[a.status] || 99;
+        const priorityB = statusPriority[b.status] || 99;
+        if (priorityA !== priorityB) return priorityA - priorityB;
+        return (Number(b.amount) || 0) - (Number(a.amount) || 0);
+      }
+      if (sortBy === 'amount_desc') {
+        return (Number(b.amount) || 0) - (Number(a.amount) || 0);
+      }
+      if (sortBy === 'amount_asc') {
+        return (Number(a.amount) || 0) - (Number(b.amount) || 0);
+      }
+      if (sortBy === 'name_asc') {
+        return String(a.clientName || '').localeCompare(String(b.clientName || ''), 'uk');
+      }
+      return 0;
+    });
+  }, [orders, search, statusFilter, sortBy]);
+
+  // Reset page when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, sortBy, pageSize]);
+
+  // Pagination calculations
+  const totalItems = filteredAndSortedOrders.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (validCurrentPage - 1) * pageSize;
+  const paginatedOrders = filteredAndSortedOrders.slice(startIndex, startIndex + pageSize);
 
   if (loading) {
     return (
@@ -264,45 +311,90 @@ export default function OrdersPage() {
           </div>
         )}
 
-        {/* Top Controls: Search + Filter tabs */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Пошук за номером, клієнтом, тел..."
-              className="pl-9 h-10 rounded-xl bg-card border-border"
-            />
-            {search && (
-              <button 
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
+        {/* Top Controls: Search + Filter tabs + Sorting */}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="relative flex-1 sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Пошук за номером, клієнтом, тел..."
+                className="pl-9 h-10 rounded-xl bg-card border-border"
+              />
+              {search && (
+                <button 
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Quick status tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              {[
+                { id: 'all', label: 'Усі' },
+                { id: 'new', label: 'Нові' },
+                { id: 'in_progress', label: 'В процесі' },
+                { id: 'completed', label: 'Виконано' },
+                { id: 'cancelled', label: 'Скасовано' }
+              ].map((tab) => (
+                <Button
+                  key={tab.id}
+                  variant={statusFilter === tab.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter(tab.id)}
+                  className="h-8 rounded-lg text-xs shrink-0"
+                >
+                  {tab.label}
+                </Button>
+              ))}
+            </div>
           </div>
 
-          {/* Quick status tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            {[
-              { id: 'all', label: 'Усі' },
-              { id: 'new', label: 'Нові' },
-              { id: 'in_progress', label: 'В процесі' },
-              { id: 'completed', label: 'Виконано' },
-              { id: 'cancelled', label: 'Скасовано' }
-            ].map((tab) => (
-              <Button
-                key={tab.id}
-                variant={statusFilter === tab.id ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter(tab.id)}
-                className="h-8 rounded-lg text-xs shrink-0"
+          {/* Sort bar & page size */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1 text-xs text-muted-foreground border-t border-border/50">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="size-3.5 text-muted-foreground shrink-0" />
+              <span className="font-medium text-foreground">Сортування:</span>
+              <div className="flex flex-wrap items-center gap-1">
+                {[
+                  { id: 'status', label: 'За статусом (Нові зверху)' },
+                  { id: 'amount_desc', label: 'Сума: від більшої' },
+                  { id: 'amount_asc', label: 'Сума: від меншої' },
+                  { id: 'name_asc', label: 'Клієнт (А-Я)' },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSortBy(s.id)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md transition-all",
+                      sortBy === s.id
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                        : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 ml-auto">
+              <span>На сторінці:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="h-7 rounded-md border border-border bg-card px-2 text-xs font-medium text-foreground focus:outline-hidden"
               >
-                {tab.label}
-              </Button>
-            ))}
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -359,14 +451,14 @@ export default function OrdersPage() {
 
         {/* Orders List */}
         <div className="space-y-3">
-          {filteredOrders.length === 0 ? (
+          {paginatedOrders.length === 0 ? (
             <Card className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
               <Package className="size-10 mx-auto text-muted-foreground/60 mb-3" />
               <p className="text-sm font-semibold text-foreground">Замовлень не знайдено</p>
               <p className="text-xs text-muted-foreground mt-1">Спробуйте змінити пошуковий запит або обрати інший фільтр</p>
             </Card>
           ) : (
-            filteredOrders.map(order => {
+            paginatedOrders.map(order => {
               const cfg = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.new;
               const StatusIcon = cfg.icon;
               const isExpanded = expandedId === order.id;
@@ -561,6 +653,47 @@ export default function OrdersPage() {
             })
           )}
         </div>
+
+        {/* Pagination Footer */}
+        {totalItems > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 pb-2 border-t border-border text-xs text-muted-foreground">
+            <div>
+              Показано <span className="font-semibold text-foreground">{startIndex + 1}</span>–
+              <span className="font-semibold text-foreground">{Math.min(startIndex + pageSize, totalItems)}</span> з{' '}
+              <span className="font-semibold text-foreground">{totalItems}</span> замовлень
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg text-xs gap-1"
+                disabled={validCurrentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="size-3.5" />
+                <span>Попередня</span>
+              </Button>
+
+              <div className="flex items-center gap-1 px-2 font-medium text-foreground">
+                <span>{validCurrentPage}</span>
+                <span className="text-muted-foreground">/</span>
+                <span>{totalPages}</span>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg text-xs gap-1"
+                disabled={validCurrentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
+                <span>Наступна</span>
+                <ChevronRight className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </Shell>
   );

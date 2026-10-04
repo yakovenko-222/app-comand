@@ -58,29 +58,28 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  collection,
+  collectionGroup,
+  onSnapshot,
+  query,
+  addDoc,
+  updateDoc,
+  doc,
+  deleteDoc,
+  serverTimestamp
+} from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+import OrdersPage from './orders-page'
 
 // Navigation links config
 const nav = [
-  { href: '/tasks', label: 'Задачі', icon: LayoutGrid, countBadge: '5' },
-  { href: '/plans', label: 'Плани', icon: CalendarDays, countBadge: '3' },
-  { href: '/orders', label: 'Замовлення', icon: Package, countBadge: '12' },
+  { href: '/tasks', label: 'Задачі', icon: LayoutGrid },
+  { href: '/plans', label: 'Плани', icon: CalendarDays },
+  { href: '/orders', label: 'Замовлення', icon: Package },
   { href: '/finance', label: 'Фінанси', icon: CircleDollarSign },
-  { href: '/payments', label: 'Виплати', icon: Wallet, countBadge: '3' },
-  { href: '/chats', label: 'Чати', icon: MessageCircle, countBadge: '1' },
-]
-
-import OrdersPage from './orders-page'
-
-// Initial seed data
-const initialTasks = [
-  { id: 1, title: 'Підготувати звіт за вересень', assignee: 'Олена Коваль', deadline: '02 жовтня', status: 'В роботі', priority: 'Високий' },
-  { id: 2, title: 'Зустріч з клієнтом', assignee: 'Андрій Мельник', deadline: '03 жовтня', status: 'В роботі', priority: 'Високий' },
-  { id: 3, title: 'Оновити договір з постачальником', assignee: 'Ірина Бондар', deadline: '04 жовтня', status: 'В роботі', priority: 'Середній' },
-  { id: 4, title: 'Перевірити рахунки за квартал', assignee: 'Максим Литвин', deadline: '05 жовтня', status: 'Виконано', priority: 'Низький' },
-  { id: 5, title: 'Підготувати презентацію проєкту', assignee: 'Олена Коваль', deadline: '07 жовтня', status: 'В роботі', priority: 'Високий' },
-  { id: 6, title: 'Зібрати зворотний звʼязок команди', assignee: 'Тарас Шевчук', deadline: '08 жовтня', status: 'Виконано', priority: 'Середній' },
-  { id: 7, title: 'Оновити базу контактів', assignee: 'Ірина Бондар', deadline: '09 жовтня', status: 'В роботі', priority: 'Низький' },
-  { id: 8, title: 'Планування спринту', assignee: 'Андрій Мельник', deadline: '10 жовтня', status: 'Виконано', priority: 'Середній' },
+  { href: '/payments', label: 'Виплати', icon: Wallet },
+  { href: '/chats', label: 'Чати', icon: MessageCircle },
 ]
 
 const initialPayments = [
@@ -122,6 +121,7 @@ function SectionTitle({ title }: { title: string }) {
 // Desktop Sidebar component
 function DesktopSidebar() {
   const pathname = usePathname()
+  const cleanPath = (pathname || '/').replace(/\/$/, '') || '/'
 
   return (
     <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card shrink-0 select-none">
@@ -146,7 +146,7 @@ function DesktopSidebar() {
         </div>
         <nav className="flex flex-col gap-1">
           {nav.map(({ href, label, icon: Icon, countBadge }) => {
-            const active = pathname === href || (href === '/tasks' && pathname === '/')
+            const active = cleanPath === href || (href === '/tasks' && cleanPath === '/')
             return (
               <Link
                 key={href}
@@ -217,38 +217,6 @@ function DesktopSidebar() {
   )
 }
 
-// Mobile Bottom Navigation
-function BottomNav() {
-  const pathname = usePathname()
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur md:hidden">
-      <div className="mx-auto grid max-w-xl grid-cols-6">
-        {nav.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || (href === '/tasks' && pathname === '/')
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors ${
-                active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <span
-                className={`flex size-8 items-center justify-center rounded-full transition-all ${
-                  active ? 'bg-primary text-primary-foreground shadow-sm' : ''
-                }`}
-              >
-                <Icon className="size-4" />
-              </span>
-              <span className="truncate max-w-[52px] text-center">{label}</span>
-            </Link>
-          )
-        })}
-      </div>
-    </nav>
-  )
-}
-
 // Unified Shell Component (Mobile + PC)
 export function Shell({
   children,
@@ -261,6 +229,7 @@ export function Shell({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const pathname = usePathname()
+  const cleanPath = (pathname || '/').replace(/\/$/, '') || '/'
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -272,11 +241,11 @@ export function Shell({
         {/* Top Header */}
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-background/95 px-4 sm:px-6 backdrop-blur">
           <div className="flex items-center gap-3">
-            {/* Mobile menu trigger */}
+            {/* Mobile menu trigger - Opens left sidebar */}
             <Button
               variant="ghost"
               size="icon"
-              className="-ml-2 size-10 md:hidden"
+              className="-ml-2 size-10 text-foreground hover:bg-muted"
               onClick={() => setMenuOpen(true)}
               aria-label="Відкрити меню"
             >
@@ -312,67 +281,211 @@ export function Shell({
           </div>
         </header>
 
-        {/* Main Body: full width responsive container on desktop, max-w-xl on mobile */}
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-12">
+        {/* Main Body: full width container on desktop, no bottom nav space needed */}
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-8 md:pb-12">
           {children}
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation (Phones) */}
-      <BottomNav />
+      {/* Mobile Left-Sliding Navigation Sidebar */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop overlay */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-300"
+            onClick={() => setMenuOpen(false)}
+          />
 
-      {/* Mobile Drawer (Phones) */}
-      <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Меню</DrawerTitle>
-            <DrawerDescription>Навігація робочого простору</DrawerDescription>
-          </DrawerHeader>
-          <div className="flex flex-col gap-1 px-4">
-            {nav.map(({ href, label, icon: Icon }) => {
-              const active = pathname === href || (href === '/tasks' && pathname === '/')
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex min-h-12 items-center gap-3 rounded-lg px-3 text-sm font-medium ${
-                    active ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <Icon className="size-4.5" />
-                  <span>{label}</span>
-                </Link>
-              )
-            })}
-            <div className="my-2 border-t border-border" />
-            <div className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground">
-              <UserRound className="size-4.5" />
-              <span>Олена Коваль (Admin)</span>
+          {/* Left Sidebar drawer */}
+          <div className="relative z-50 w-72 max-w-[80vw] h-full bg-card border-r border-border shadow-2xl flex flex-col animate-in slide-in-from-left duration-300">
+            {/* Header with Close */}
+            <div className="flex h-16 items-center justify-between border-b border-border px-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                  <Building2 className="size-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Робочий простір</p>
+                  <p className="text-[11px] text-muted-foreground">Команда Atlas</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
+                onClick={() => setMenuOpen(false)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+
+            {/* Links */}
+            <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+              <div className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Розділи системи
+              </div>
+              {nav.map(({ href, label, icon: Icon }) => {
+                const active = cleanPath === href || (href === '/tasks' && cleanPath === '/')
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                        : "text-foreground hover:bg-muted/70"
+                    )}
+                  >
+                    <Icon className={cn("size-5", active ? "text-primary-foreground" : "text-muted-foreground")} />
+                    <span>{label}</span>
+                    <ChevronRight className={cn("ml-auto size-4", active ? "opacity-90" : "opacity-30")} />
+                  </Link>
+                )
+              })}
+
+              <div className="my-3 border-t border-border/60" />
+
+              <div className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Користувач
+              </div>
+              <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-muted/40 border border-border/50">
+                <div className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  ОК
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-foreground">Олена Коваль</p>
+                  <p className="truncate text-[10px] text-muted-foreground">Адміністратор</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 border-t border-border">
+              <Button 
+                variant="outline" 
+                className="w-full h-10 text-xs rounded-xl gap-2"
+                onClick={() => setMenuOpen(false)}
+              >
+                <X className="size-4" />
+                <span>Закрити меню</span>
+              </Button>
             </div>
           </div>
-          <DrawerFooter>
-            <DrawerClose asChild>
-              <Button variant="outline">Закрити</Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+        </div>
+      )}
     </div>
   )
 }
 
 // -------------------------------------------------------------
-// 1. TASKS PAGE (Responsive Mobile + PC)
+// 1. TASKS PAGE (Connected to Firebase Firestore)
 // -------------------------------------------------------------
 function TasksPage() {
-  const [tasks, setTasks] = useState(initialTasks)
+  const [tasks, setTasks] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('Усі')
   const [searchQuery, setSearchQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [assignee, setAssignee] = useState('')
   const [deadline, setDeadline] = useState('')
+  const [priority, setPriority] = useState('Середній')
+
+  useEffect(() => {
+    let unsubscribe: () => void = () => {}
+
+    const setupTasksListener = () => {
+      try {
+        // First try collectionGroup 'tasks'
+        const q = query(collectionGroup(db, 'tasks'))
+        unsubscribe = onSnapshot(
+          q,
+          (snapshot) => {
+            if (!snapshot.empty) {
+              const loaded = snapshot.docs.map((docSnap) => {
+                const data = docSnap.data()
+                return {
+                  id: docSnap.id,
+                  title: data.title || data.name || 'Задача без назви',
+                  assignee: data.assignee || data.assignedTo || data.user || 'Не призначено',
+                  deadline: data.deadline || data.dueDate || (data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString('uk-UA') : 'Не вказано'),
+                  status: data.status === 'done' || data.status === 'Виконано' || data.completed ? 'Виконано' : 'В роботі',
+                  priority: data.priority || 'Середній',
+                  ...data,
+                }
+              })
+              setTasks(loaded)
+              setLoading(false)
+            } else {
+              // Try root collection 'tasks'
+              const rootQ = query(collection(db, 'tasks'))
+              unsubscribe = onSnapshot(
+                rootQ,
+                (rootSnap) => {
+                  const loaded = rootSnap.docs.map((docSnap) => {
+                    const data = docSnap.data()
+                    return {
+                      id: docSnap.id,
+                      title: data.title || data.name || 'Задача без назви',
+                      assignee: data.assignee || data.assignedTo || data.user || 'Не призначено',
+                      deadline: data.deadline || data.dueDate || (data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString('uk-UA') : 'Не вказано'),
+                      status: data.status === 'done' || data.status === 'Виконано' || data.completed ? 'Виконано' : 'В роботі',
+                      priority: data.priority || 'Середній',
+                      ...data,
+                    }
+                  })
+                  setTasks(loaded)
+                  setLoading(false)
+                },
+                (rootErr) => {
+                  console.warn('Firestore tasks root error:', rootErr)
+                  setTasks([])
+                  setLoading(false)
+                }
+              )
+            }
+          },
+          (err) => {
+            console.warn('Firestore tasks collectionGroup error:', err)
+            // Fallback to root query
+            const rootQ = query(collection(db, 'tasks'))
+            unsubscribe = onSnapshot(
+              rootQ,
+              (rootSnap) => {
+                const loaded = rootSnap.docs.map((docSnap) => {
+                  const data = docSnap.data()
+                  return {
+                    id: docSnap.id,
+                    title: data.title || data.name || 'Задача без назви',
+                    assignee: data.assignee || data.assignedTo || data.user || 'Не призначено',
+                    deadline: data.deadline || data.dueDate || 'Не вказано',
+                    status: data.status === 'done' || data.status === 'Виконано' || data.completed ? 'Виконано' : 'В роботі',
+                    priority: data.priority || 'Середній',
+                    ...data,
+                  }
+                })
+                setTasks(loaded)
+                setLoading(false)
+              },
+              () => {
+                setTasks([])
+                setLoading(false)
+              }
+            )
+          }
+        )
+      } catch (err) {
+        console.error('Failed to setup tasks listener:', err)
+        setTasks([])
+        setLoading(false)
+      }
+    }
+
+    setupTasksListener()
+    return () => unsubscribe()
+  }, [])
 
   // Statistics
   const totalTasks = tasks.length
@@ -385,25 +498,49 @@ function TasksPage() {
         filter === 'Усі' ||
         (filter === 'Виконано' ? task.status === 'Виконано' : task.status === 'В роботі')
       const matchesSearch =
-        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.assignee.toLowerCase().includes(searchQuery.toLowerCase())
+        String(task.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(task.assignee || '').toLowerCase().includes(searchQuery.toLowerCase())
       return matchesFilter && matchesSearch
     })
   }, [tasks, filter, searchQuery])
 
-  const handleAddTask = () => {
+  const handleToggleTaskStatus = async (task: any, newChecked: boolean) => {
+    const newStatus = newChecked ? 'Виконано' : 'В роботі'
+    // Optimistic UI update
+    setTasks((current) =>
+      current.map((item) => (item.id === task.id ? { ...item, status: newStatus } : item))
+    )
+    try {
+      await updateDoc(doc(db, 'tasks', task.id), {
+        status: newStatus,
+        completed: newChecked,
+        updatedAt: serverTimestamp(),
+      })
+    } catch (err) {
+      console.warn('Could not update task in root tasks, trying local update:', err)
+    }
+  }
+
+  const handleAddTask = async () => {
     if (title.trim()) {
-      setTasks((current) => [
-        {
-          id: Date.now(),
-          title: title.trim(),
-          assignee: assignee.trim() || 'Не призначено',
-          deadline: deadline || '12 жовтня',
-          status: 'В роботі',
-          priority: 'Середній',
-        },
-        ...current,
-      ])
+      const newTaskData = {
+        title: title.trim(),
+        assignee: assignee.trim() || 'Не призначено',
+        deadline: deadline.trim() || 'Сьогодні',
+        status: 'В роботі',
+        priority: priority || 'Середній',
+        completed: false,
+        createdAt: serverTimestamp(),
+      }
+
+      try {
+        await addDoc(collection(db, 'tasks'), newTaskData)
+      } catch (err) {
+        console.error('Error adding task to Firestore:', err)
+        // Local fallback if offline
+        setTasks((prev) => [{ id: String(Date.now()), ...newTaskData }, ...prev])
+      }
+
       setTitle('')
       setAssignee('')
       setDeadline('')
@@ -429,7 +566,7 @@ function TasksPage() {
               <p className="text-xs font-medium text-muted-foreground">Всього задач</p>
               <div className="mt-1 flex items-baseline justify-between">
                 <p className="text-2xl font-bold tracking-tight text-foreground">{totalTasks}</p>
-                <span className="text-xs text-muted-foreground">в системі</span>
+                <span className="text-xs text-muted-foreground">з бази Firebase</span>
               </div>
             </CardContent>
           </Card>
@@ -455,10 +592,10 @@ function TasksPage() {
           </Card>
           <Card className="rounded-xl border border-border shadow-sm col-span-2 md:col-span-1">
             <CardContent className="p-4">
-              <p className="text-xs font-medium text-muted-foreground">Дедлайн тижня</p>
+              <p className="text-xs font-medium text-muted-foreground">Статус бази</p>
               <div className="mt-1 flex items-baseline justify-between">
-                <p className="text-base font-bold tracking-tight text-foreground truncate">07 жовтня</p>
-                <span className="text-xs text-muted-foreground">4 задачі</span>
+                <p className="text-base font-bold tracking-tight text-emerald-600 dark:text-emerald-400 truncate">Синхронізовано</p>
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
               </div>
             </CardContent>
           </Card>
@@ -486,59 +623,61 @@ function TasksPage() {
         </div>
 
         {/* Tasks List / Grid (Responsive: 1 col on mobile, 2 cols on PC) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {shown.map((task) => (
-            <Card
-              key={task.id}
-              className="group rounded-xl border border-border transition-all duration-150 hover:border-primary/40 hover:shadow-sm"
-            >
-              <CardContent className="flex items-start gap-3.5 p-4">
-                <Checkbox
-                  checked={task.status === 'Виконано'}
-                  onCheckedChange={(checked) =>
-                    setTasks((current) =>
-                      current.map((item) =>
-                        item.id === task.id
-                          ? { ...item, status: checked ? 'Виконано' : 'В роботі' }
-                          : item
-                      )
-                    )
-                  }
-                  className="mt-0.5"
-                  aria-label={`Позначити: ${task.title}`}
-                />
-                <div className="min-w-0 flex-1">
-                  <div
-                    className={`text-sm font-semibold transition-all ${
-                      task.status === 'Виконано' ? 'line-through text-muted-foreground' : 'text-foreground'
-                    }`}
-                  >
-                    {task.title}
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1 font-medium text-foreground">
-                      <span className="size-4.5 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
-                        {task.assignee.split(' ').map((n) => n[0]).join('')}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary" />
+            <p className="text-xs text-muted-foreground">Завантаження задач з Firebase...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {shown.map((task) => (
+              <Card
+                key={task.id}
+                className="group rounded-xl border border-border transition-all duration-150 hover:border-primary/40 hover:shadow-sm"
+              >
+                <CardContent className="flex items-start gap-3.5 p-4">
+                  <Checkbox
+                    checked={task.status === 'Виконано'}
+                    onCheckedChange={(checked) => handleToggleTaskStatus(task, Boolean(checked))}
+                    className="mt-0.5 cursor-pointer"
+                    aria-label={`Позначити: ${task.title}`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className={`text-sm font-semibold transition-all ${
+                        task.status === 'Виконано' ? 'line-through text-muted-foreground' : 'text-foreground'
+                      }`}
+                    >
+                      {task.title}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 font-medium text-foreground">
+                        <span className="size-4.5 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
+                          {String(task.assignee || 'К')
+                            .split(' ')
+                            .map((n: string) => n[0])
+                            .join('')}
+                        </span>
+                        {task.assignee}
                       </span>
-                      {task.assignee}
-                    </span>
-                    <span>·</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="size-3" />
-                      до {task.deadline}
-                    </span>
+                      <span>·</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="size-3" />
+                        до {task.deadline}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <StatusBadge status={task.status} />
-              </CardContent>
-            </Card>
-          ))}
-          {shown.length === 0 && (
-            <div className="col-span-full py-12 text-center text-sm text-muted-foreground">
-              Задач за цим критерієм не знайдено
-            </div>
-          )}
-        </div>
+                  <StatusBadge status={task.status} />
+                </CardContent>
+              </Card>
+            ))}
+            {shown.length === 0 && (
+              <div className="col-span-full py-12 text-center text-sm text-muted-foreground">
+                Задач у базі даних не знайдено. Натисніть «Нова задача», щоб додати першу.
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Mobile Floating Action Button (Phones only) */}
@@ -556,7 +695,7 @@ function TasksPage() {
         <DrawerContent className="max-w-lg mx-auto">
           <DrawerHeader>
             <DrawerTitle>Нова задача</DrawerTitle>
-            <DrawerDescription>Додайте задачу для команди</DrawerDescription>
+            <DrawerDescription>Додайте нову задачу безпосередньо у базу Firebase</DrawerDescription>
           </DrawerHeader>
           <div className="flex flex-col gap-4 px-4">
             <div className="flex flex-col gap-2">
@@ -565,7 +704,8 @@ function TasksPage() {
                 id="task-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Наприклад: Підготувати квартальний звіт"
+                placeholder="Наприклад: Підготувати звіт за місяць"
+                required
               />
             </div>
             <div className="flex flex-col gap-2">
@@ -583,12 +723,12 @@ function TasksPage() {
                 id="task-deadline"
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
-                placeholder="Наприклад: 12 жовтня"
+                placeholder="Наприклад: 15 жовтня"
               />
             </div>
           </div>
           <DrawerFooter>
-            <Button onClick={handleAddTask}>Додати задачу</Button>
+            <Button onClick={handleAddTask}>Зберегти у базу</Button>
             <DrawerClose asChild>
               <Button variant="outline">Скасувати</Button>
             </DrawerClose>
@@ -1141,85 +1281,47 @@ function PaymentsPage() {
   )
 }
 
-// -------------------------------------------------------------
-// 5. CHATS PAGE (Responsive Mobile + PC)
-// -------------------------------------------------------------
-function ChatsPage() {
-  const [messages, setMessages] = useState([
-    { id: 1, text: 'Привіт! Коли буде готовий макет?', sender: 'Олена Коваль', isMe: false, time: '10:05' },
-    { id: 2, text: 'Вже закінчую, скину за годину.', sender: 'Я', isMe: true, time: '10:12' },
-    { id: 3, text: 'Супер, чекаю.', sender: 'Олена Коваль', isMe: false, time: '10:15' },
-  ])
-  const [newMessage, setNewMessage] = useState('')
+// Sound synthesizer helper using Web Audio API
+function playStartupSound() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    if (ctx.state === 'suspended') {
+      ctx.resume()
+    }
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newMessage.trim()) return
-    
-    setMessages([
-      ...messages,
-      {
-        id: Date.now(),
-        text: newMessage,
-        sender: 'Я',
-        isMe: true,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }
-    ])
-    setNewMessage('')
+    const now = ctx.currentTime
+
+    // 1. Crystal chord notes: F4, A4, C5, F5
+    const freqs = [349.23, 440.0, 523.25, 698.46]
+    freqs.forEach((freq, idx) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, now + idx * 0.08)
+
+      gain.gain.setValueAtTime(0, now + idx * 0.08)
+      gain.gain.linearRampToValueAtTime(0.15, now + idx * 0.08 + 0.04)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.9)
+
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+
+      osc.start(now + idx * 0.08)
+      osc.stop(now + idx * 0.08 + 0.95)
+    })
+  } catch (err) {
+    console.log('Audio autoplay prevented or unsupported:', err)
   }
-
-  return (
-    <Shell title="Чати">
-      <div className="flex flex-col h-[calc(100vh-200px)] max-h-[800px] border border-border rounded-xl bg-card overflow-hidden shadow-sm">
-        <div className="border-b border-border bg-muted/30 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm shadow-sm">
-              ОК
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground text-sm">Олена Коваль</h3>
-              <p className="text-xs text-emerald-500">В мережі</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex flex-col ${msg.isMe ? 'items-end' : 'items-start'}`}>
-              {!msg.isMe && <span className="text-[10px] text-muted-foreground ml-1 mb-1">{msg.sender}</span>}
-              <div className={`px-4 py-2 rounded-2xl max-w-[80%] ${
-                msg.isMe 
-                  ? 'bg-primary text-primary-foreground rounded-tr-sm' 
-                  : 'bg-muted text-foreground border border-border rounded-tl-sm'
-              }`}>
-                <p className="text-sm">{msg.text}</p>
-              </div>
-              <span className="text-[10px] text-muted-foreground mt-1 mx-1">{msg.time}</span>
-            </div>
-          ))}
-        </div>
-
-        <form onSubmit={handleSend} className="p-3 border-t border-border bg-background flex gap-2">
-          <Input 
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Напишіть повідомлення..."
-            className="flex-1 rounded-full h-10 px-4"
-          />
-          <Button type="submit" size="icon" className="h-10 w-10 rounded-full shrink-0">
-            <ArrowUpRight className="size-5" />
-          </Button>
-        </form>
-      </div>
-    </Shell>
-  )
 }
 
 // Main Page Switcher
 export default function CompanyApp() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [authChecking, setAuthChecking] = useState(true)
+  const [showSplash, setShowSplash] = useState(true)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -1233,6 +1335,12 @@ export default function CompanyApp() {
     }
     setAuthChecking(false)
 
+    // Play welcome sound and hide splash screen after animation
+    playStartupSound()
+    const timer = setTimeout(() => {
+      setShowSplash(false)
+    }, 1800)
+
     if (Capacitor.isNativePlatform()) {
       PushNotifications.requestPermissions().then(result => {
         if (result.receive === 'granted') {
@@ -1242,23 +1350,58 @@ export default function CompanyApp() {
 
       PushNotifications.addListener('registration', (token) => {
         console.log('Push registration success, token: ' + token.value);
-        // We alert here so the user can see their token and verify it worked
-        // alert('Push Token:\n' + token.value); 
       });
 
       PushNotifications.addListener('pushNotificationReceived', (notification) => {
         alert('Пуш-сповіщення: ' + notification.title + '\n' + notification.body);
       });
     }
+
+    return () => clearTimeout(timer)
   }, []);
 
+  if (showSplash) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background text-foreground select-none overflow-hidden">
+        {/* Subtle background glow */}
+        <div className="absolute size-80 rounded-full bg-primary/15 blur-3xl animate-pulse" />
+
+        {/* Animated Brand Emblem */}
+        <div className="relative z-10 flex flex-col items-center gap-5 animate-splash-logo">
+          <div className="relative flex size-20 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-2xl animate-splash-glow">
+            <Building2 className="size-10" />
+            <Sparkles className="absolute -top-2 -right-2 size-6 text-amber-400 animate-bounce" />
+          </div>
+
+          <div className="text-center space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Робочий простір
+            </h1>
+            <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
+              Atlas Команда & CRM
+            </p>
+          </div>
+
+          {/* Glowing loading bar */}
+          <div className="w-36 h-1 rounded-full bg-muted overflow-hidden mt-3">
+            <div className="h-full bg-primary rounded-full animate-pulse w-full duration-1000" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (authChecking) {
-    return <div className="flex min-h-screen items-center justify-center bg-background p-4"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    )
   }
 
   if (!isLoggedIn) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4 animate-in fade-in duration-500">
         <Card className="w-full max-w-sm rounded-2xl shadow-lg border-border">
           <CardHeader className="text-center space-y-2 pb-6">
             <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm mb-2">
@@ -1292,7 +1435,7 @@ export default function CompanyApp() {
                 <Label htmlFor="password">Пароль</Label>
                 <Input 
                   id="password" 
-                  type="password"
+                  type="password" 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
                   placeholder="••••••••" 
@@ -1308,10 +1451,12 @@ export default function CompanyApp() {
     )
   }
 
-  if (pathname === '/plans') return <PlansPage />
-  if (pathname === '/finance') return <FinancePage />
-  if (pathname === '/payments') return <PaymentsPage />
-  if (pathname === '/chats') return <ChatsPage />
-  if (pathname === '/orders') return <OrdersPage />
+  const cleanPath = (pathname || '/').replace(/\/$/, '') || '/'
+
+  if (cleanPath === '/plans') return <PlansPage />
+  if (cleanPath === '/finance') return <FinancePage />
+  if (cleanPath === '/payments') return <PaymentsPage />
+  if (cleanPath === '/chats') return <ChatsPage />
+  if (cleanPath === '/orders') return <OrdersPage />
   return <TasksPage />
 }
